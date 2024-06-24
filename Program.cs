@@ -3,10 +3,13 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 const string serviceName = "demo-random";
+ActivitySource source = new ActivitySource(serviceName, "1.0.0");
+
 
 builder.Logging.AddOpenTelemetry(options =>
 {
@@ -23,6 +26,7 @@ builder.Services.AddOpenTelemetry()
           .AddHttpClientInstrumentation()
           .AddConsoleExporter()
           .AddOtlpExporter()
+          .AddSource(serviceName)
           )
 
 
@@ -50,7 +54,10 @@ async Task<int> GetRandomNumberAsync([FromServices] ILogger<Program> logger)
 
 async Task<int> GenerateAsync()
 {
-    var httpClient = new HttpClient();
-    await httpClient.GetAsync("https://www.google.com");
-    return Random.Shared.Next(0, 10);
+    using (Activity activity = source.StartActivity("Generate"))
+    {
+        var httpClient = new HttpClient();
+        await httpClient.GetAsync("https://www.google.com");
+        return Random.Shared.Next(0, 10);
+    }
 }
