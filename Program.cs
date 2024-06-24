@@ -20,6 +20,7 @@ builder.Services.AddOpenTelemetry()
       .ConfigureResource(resource => resource.AddService(serviceName))
       .WithTracing(tracing => tracing
           .AddAspNetCoreInstrumentation()
+          .AddHttpClientInstrumentation()
           .AddConsoleExporter()
           .AddOtlpExporter()
           )
@@ -27,24 +28,29 @@ builder.Services.AddOpenTelemetry()
 
       .WithMetrics(metrics => metrics
           .AddAspNetCoreInstrumentation()
+          .AddHttpClientInstrumentation()
           .AddConsoleExporter());
 
 
 var app = builder.Build();
 
-app.MapGet("/",  GetRandomNumber);
+app.MapGet("/", GetRandomNumberAsync);
 
 app.Run();
 
-int GetRandomNumber([FromServices] ILogger<Program> logger){
+async Task<int> GetRandomNumberAsync([FromServices] ILogger<Program> logger)
+{
     logger.LogInformation("Random");
 
-    var random = Generate();
+    var random = await GenerateAsync();
     logger.LogInformation("End Random", random);
-    return random; 
-    
+    return random;
+
 }
 
-int Generate(){
-return Random.Shared.Next(0,10);
+async Task<int> GenerateAsync()
+{
+    var httpClient = new HttpClient();
+    await httpClient.GetAsync("https://www.google.com");
+    return Random.Shared.Next(0, 10);
 }
